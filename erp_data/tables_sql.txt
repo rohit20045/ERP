@@ -1,0 +1,141 @@
+
+CREATE TABLE admin (
+    username VARCHAR(50) PRIMARY KEY,
+    password VARCHAR(100),
+    real_name VARCHAR(100),
+    dob DATE,
+    address VARCHAR(200),
+    joining_date DATE,
+    salary DECIMAL(10, 2)
+);
+
+CREATE TABLE student (
+    username VARCHAR(50) UNIQUE,	
+    password VARCHAR(100),		
+    roll_no INT,			
+    real_name VARCHAR(100),		
+    address VARCHAR(200),		
+    course VARCHAR(50),			
+    branch VARCHAR(50),			
+    section VARCHAR(5),			
+    student_id INT AUTO_INCREMENT PRIMARY KEY,	
+    fees DECIMAL(10,2),				
+    course_id VARCHAR(10),			
+    branch_code VARCHAR(20),			
+    semester INT,				
+    cgpa DECIMAL(4, 2) CHECK (cgpa >= 0.00 AND cgpa <= 10.00), 	
+    grad_year INT						
+);
+
+
+CREATE TABLE staff (   
+    username VARCHAR(50) UNIQUE,
+    password VARCHAR(100),
+    real_name VARCHAR(100),
+    dob DATE,
+    branch VARCHAR(100),
+    salary DECIMAL(10, 2),
+    address VARCHAR(200),
+    joining_date DATE,
+    num_of_subjects INT,
+    staff_id INT AUTO_INCREMENT PRIMARY KEY,
+    branch_code VARCHAR(10)
+);
+
+create table course_main(course_id varchar(10) PRIMARY KEY, 
+    course varchar(50));
+
+
+CREATE TABLE courseid_branchcode (
+    course_id varchar(10),
+    branch_code varchar(20) PRIMARY KEY,
+    branch VARCHAR(50),
+    FOREIGN KEY (course_id) REFERENCES course_main(course_id)
+);
+
+CREATE TABLE branchcode_subcode_sem (
+    branch_code varchar(20),
+    sub_code varchar(10) PRIMARY KEY,
+    semester INT,
+    FOREIGN KEY (branch_code) REFERENCES courseid_branchcode(branch_code)
+);
+
+create table subcode_subname(
+    sub_code varchar(10) PRIMARY KEY,
+    sub_name varchar(70),
+    FOREIGN KEY (sub_code) REFERENCES branchcode_subcode_sem(sub_code)
+);
+
+create table staffid_subcode(
+    staff_id INT,
+    sub_code varchar(10),
+    section varchar(5),
+    FOREIGN KEY (staff_id) REFERENCES staff(staff_id)
+);
+
+
+create table attendance(staff_id INT, 
+	student_id INT,
+	branch_code VARCHAR(20),
+	semester INT,
+	section VARCHAR(5),
+	sub_code VARCHAR(10),
+	present INT,
+	roll_no INT
+);
+
+create table fees(branch_code VARCHAR(20) , 
+        semester INT,
+	fees DECIMAL(10,2),
+        FOREIGN KEY (branch_code) REFERENCES courseid_branchcode(branch_code)
+);
+
+create table total_attendance(branch_code VARCHAR(20),
+	semester INT,
+	section VARCHAR(5),
+	sub_code VARCHAR(10) UNIQUE,
+	total INT
+);
+
+CREATE TABLE marks (
+    student_id INT,
+    branch_code VARCHAR(20),
+    semester INT,
+    section VARCHAR(5),
+    sub_code VARCHAR(10),
+    mid_marks INT CHECK (mid_marks <= 25),
+    end_marks INT CHECK (end_marks <= 100),
+);
+
+
+CREATE TABLE grad_student 
+(
+    student_id INT PRIMARY KEY,
+    real_name VARCHAR(100),
+    address VARCHAR(200),
+    course VARCHAR(50),
+    branch VARCHAR(50),
+    section VARCHAR(5),
+    course_id VARCHAR(10),
+    branch_code VARCHAR(20),
+    cgpa DECIMAL(4, 2) CHECK (cgpa >= 0.00 AND cgpa <= 10.00),
+    grad_year INT,
+    pending_fees DECIMAL(10,2)
+);
+
+CREATE TABLE cgpa(
+	student_id INT,
+	real_name VARCHAR(100),
+	course_id VARCHAR(10),
+	branch_code VARCHAR(20),
+	semester INT,					
+    	cgpa DECIMAL(4, 2) CHECK (cgpa >= 0.00 AND cgpa <= 10.00), 	
+    	grad_year INT
+);	
+
+CREATE TABLE holy_salt(
+	username VARCHAR(50) UNIQUE,
+	salt VARCHAR(50),
+	hash VARCHAR(100)
+);
+
