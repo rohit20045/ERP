@@ -20,6 +20,12 @@ The project has 3 types of users admin, staff and student. Each User has differe
 ## Installation
 > [!IMPORTANT]
 > While giving the paths for the directory in Visual Studion make sure that you are in x64 platform and Release Configuration. I also have provided the screenshots check them out for better understanding
+
+### Copying file address from address bar
+Adress bar             
+:-------------------------:
+![Alt text](screenshots/address_bar.png)  
+
 ### Installing Dependencies
 #### MySQL
   -	While installing MySQL installer please do remember the password save it somewhere.
