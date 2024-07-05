@@ -24,7 +24,7 @@ public:
 	void sha256(const string inputStr, stringstream& ss);
 	void addPassword(Database& db, const string& username, const string& hash, const string& salt);
 	void sendMail(string& email, string& otp,string& username);
-	void changePasswordKnown(Database& db);
+	void changePasswordKnown(Database& db,string& username, string& userType);
 	void changePasswordOtp(Database& db, string& username, string& userType);
 };
 

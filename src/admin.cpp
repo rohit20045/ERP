@@ -1311,18 +1311,21 @@ void Admin::insertAdmin(Database& db, const Admin& admin)
     password += salt;
     passFobj.sha256(password, hash);
     password = hash.str();
-    passFobj.addPassword(db,username,password,salt);
+    
     string mail;
     cout << "Enter the mail : ";
     cin >> mail;
+
     string query = "INSERT INTO admin (username, password, real_name, dob, address, joining_date, salary,mail) VALUES ('"
-        + admin.getUsername() + "', '" + password + "', '" + admin.getRealName() + "', "
-        + admin.getDob() + ", '" + admin.getAddress() + "', '" + admin.getJoiningDate() + "', "
+        + admin.getUsername() + "', '" + password + "', '" + admin.getRealName() + "', '"
+        + admin.getDob() + "', '" + admin.getAddress() + "', '" + admin.getJoiningDate() + "', "
         + to_string(admin.getSalary()) + ", '" + mail + "')";
     if (mysql_query(conn, query.c_str())) {
         cerr << "Error in inserting admin: " << mysql_error(conn) << endl;
     }
-    else {
+    else 
+    {
+        passFobj.addPassword(db, username, password, salt);
         cout << "\nAdmin Successfully Added.\n";
     }
 }
@@ -1411,8 +1414,6 @@ void Admin::insertStudent(Database& db, const Student& student)
     passFobj.sha256(password, hash);
     password = hash.str();
 
-    passFobj.addPassword(db, username, password, salt);
-
     string mail;
     cout << "Enter the mail : ";
     cin >> mail;
@@ -1425,6 +1426,8 @@ void Admin::insertStudent(Database& db, const Student& student)
     if (mysql_query(conn, query.c_str())) {
         cerr << "Error in inserting student: " << mysql_error(conn) << endl;
     }
+    passFobj.addPassword(db, username, password, salt);
+
     string selectQuery = "SELECT branch_code, semester,section FROM student WHERE username = '" + username + "'";
     if (mysql_query(conn, selectQuery.c_str()))
     {
@@ -1521,8 +1524,6 @@ void Admin::insertStaff(Database& db, const Staff& staff)
     password += salt;
     passFobj.sha256(password, hash);
     password = hash.str();
-    passFobj.addPassword(db, username, password, salt);
-
     string mail;
     cout << "Enter the mail : ";
     cin >> mail;
@@ -1536,6 +1537,7 @@ void Admin::insertStaff(Database& db, const Staff& staff)
     }
     else 
     {
+        passFobj.addPassword(db, username, password, salt);
         cout << "\nStaff Successfully Added.\n";
         cout << "Want to Enter the subjects Now ( y or n )\n";
         string ans;
@@ -1626,14 +1628,14 @@ void Admin::addNewUser(Database& db)
         }
     }
     cout << "\n";
-
+    cin.ignore();
     if (userType == "admin") {
         string realName, address, joiningDate;
         string dob;
         double salary;
         cout << "Enter real name: ";
         getline(cin, realName);
-        cout << "Enter dob: (YYYY-MM-DD)";
+        cout << "Enter dob: (YYYY-MM-DD) : ";
         cin >> dob;
         cin.ignore();
         cout << "Enter address: ";
@@ -1644,14 +1646,13 @@ void Admin::addNewUser(Database& db)
         cin >> salary;
         Admin admin(username, password, realName, dob, address, joiningDate, salary);
         insertAdmin(db, admin);
-        cout << "\nAdmin Successfully Added.\n";
+        
     }
     else if (userType == "staff")
     {
         string realName, branch, address, joiningDate, branch_code, dob;
         int  numOfSubjects;
         double salary;
-        cin.ignore();
         cout << "Enter real name: ";
         getline(cin, realName);
         cout << "Enter DOB: (YYYY-MM-DD): ";
@@ -1672,13 +1673,11 @@ void Admin::addNewUser(Database& db)
         branch = getBranchFromBranchId(db, branch_code);
         Staff staff(username, password, realName, dob, branch, salary, address, joiningDate, numOfSubjects, branch_code);
         insertStaff(db, staff);
-        cout << "\nStaff Successfully Added.\n";
     }
     else if (userType == "student")
     {
         int semester;
         string realName, address, course, branch, section, courseId, branchCode;
-        cin.ignore();
         cout << "Enter real name: ";
         getline(cin, realName);
         cout << "Enter address: ";
@@ -2481,7 +2480,7 @@ void Admin::adminMenu(Database& db, string& user)
 {
     int choice;
     string username;
-    string userType;
+    string userType,user2,userT;
     int ch, ch2;
     do
     {
@@ -2911,7 +2910,9 @@ void Admin::adminMenu(Database& db, string& user)
                 switch (ch2)
                 {
                 case 1:
-                    passFobj.changePasswordKnown(db);
+                    user2 = "-1";
+                    userT = "";
+                    passFobj.changePasswordKnown(db,user2,userT);
                     break;
                 case 2:
                     cout << "Enter username : ";

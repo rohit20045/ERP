@@ -662,24 +662,10 @@ void Student::studentMenu(Database& db, string& username)
                 switch (ch2)
                 {
                 case 1:
-                    passFobj.changePasswordKnown(db);
+                    passFobj.changePasswordKnown(db,username,userType);
                     break;
                 case 2:
 
-                    cout << "Enter username : ";
-                    cin >> username;
-                    cout << "Enter the type of user [ admin | staff | student ]" << endl;
-                    cin >> userType;
-                    if (userType != "admin" && userType != "staff" && userType != "student")
-                    {
-                        cout << "Wrong Type !" << endl;
-                        break;
-                    }
-                    if (!(passFobj.checkExistsUser(db, username, userType)))
-                    {
-                        cout << "User with this username doesn't exists!!\n";
-                        break;
-                    }
                     passFobj.changePasswordOtp(db, username, userType);
                     break;
                 case 3:

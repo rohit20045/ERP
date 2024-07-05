@@ -1,6 +1,7 @@
 #include <string>
 #include<mysql.h>
 #include<iostream>
+#include <sstream>
 
 using namespace std;
 #include "database.h"
@@ -31,20 +32,57 @@ Database::~Database()
 
 string Database::checkUser(string& username, string& password)
 {
+    string cur_pass = password;
+    string query = "SELECT hash, salt FROM holy_salt WHERE username = '" + username + "'";
+
+    if (mysql_query(conn, query.c_str()))
+    {
+        cerr << "Error executing query: " << mysql_error(conn) << endl;
+        return "null";
+    }
+
+    MYSQL_RES* res = mysql_store_result(conn);
+    if (res == nullptr) {
+        cerr << "Error storing result: " << mysql_error(conn) << endl;
+        return "null";
+    }
+
+    MYSQL_ROW row;
+    string salt = "";
+    string og_hash = "";
+    while ((row = mysql_fetch_row(res)))
+    {
+        og_hash = row[0] ? row[0] : "";
+        salt = row[1] ? row[1] : "";
+    }
+
+    mysql_free_result(res);
+
+    cur_pass += salt;
+    stringstream hash1;
+    passFobj.sha256(cur_pass, hash1);
+    string pass = hash1.str();
+
+    if (pass != og_hash)
+    {
+        cout << "Wrong Password!!"<<endl;
+        return "none";
+    }
+
     string userType;
-    string query = "SELECT * FROM admin WHERE username='" + username + "' AND password='" + password + "'";
+    query = "SELECT * FROM admin WHERE username='" + username + "' AND password='" + og_hash + "'";
     if (mysql_query(conn, query.c_str())) {
         cerr << "Error in checking admin: " << mysql_error(conn) << endl;
         return "null";
     }
-    MYSQL_RES* res = mysql_store_result(conn);
+    res = mysql_store_result(conn);
     if (mysql_num_rows(res) > 0) {
         userType = "admin";
         mysql_free_result(res);
         return "admin";
     }
     mysql_free_result(res);
-    query = "SELECT * FROM staff WHERE username='" + username + "' AND password='" + password + "'";
+    query = "SELECT * FROM staff WHERE username='" + username + "' AND password='" + og_hash + "'";
     if (mysql_query(conn, query.c_str())) {
         cerr << "Error in checking staff: " << mysql_error(conn) << endl;
         return "null";
@@ -56,7 +94,7 @@ string Database::checkUser(string& username, string& password)
         return "staff";
     }
     mysql_free_result(res);
-    query = "SELECT * FROM student WHERE username='" + username + "' AND password='" + password + "'";
+    query = "SELECT * FROM student WHERE username='" + username + "' AND password='" + og_hash + "'";
     if (mysql_query(conn, query.c_str())) {
         cerr << "Error in checking student: " << mysql_error(conn) << endl;
         return "null";
