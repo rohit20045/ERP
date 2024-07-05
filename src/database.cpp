@@ -14,7 +14,7 @@ Database::Database() {
         exit(1);
     }
 
-    if (!mysql_real_connect(conn, "localhost", "root", "+@4427JDm#;", "testdb", 3306, NULL, 0)) {
+    if (!mysql_real_connect(conn, "localhost", "root", "your_password", "database_name", 3306, NULL, 0)) {
         cerr << "Failed to connect to database: Error: " << mysql_error(conn) << endl;
         exit(1);
     }
