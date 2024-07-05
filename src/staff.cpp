@@ -1415,7 +1415,130 @@ int Staff::getNoOfTotalStudentInSec(Database& db, string& branch_code, int semes
     mysql_free_result(res);
     return student_count;
 }
-
+/*
+void customAttendance(Database& db, string& username)
+{
+    MYSQL* conn = db.getConnection();
+    string subcode, section, branchCode;
+    int roll_no, semester;
+    cout << "Enter BranchCode: ";
+    cin >> branchCode;
+    if (!(checkStaffBranch(db, branchCode, username)))
+    {
+        cout << "You Do not belong to this branch!" << endl;
+        return;
+    }
+    cout << "Enter the Semester: ";
+    cin >> semester;
+    if (!(checkSemesterExists(db, branchCode, semester)))
+    {
+        cout << "This semester doesn't exists" << endl;
+        return;
+    }
+    cout << "\nEnter the section: ";
+    cin >> section;
+    if (!(checkSectionExists(db, branchCode, semester, section)))
+    {
+        cout << "Section Does't Exists!!!" << endl;
+        return;
+    }
+    cout << "\nEner the subcode of the subject: ";
+    cin >> subcode;
+    int staffId = getStaffIdByUsername(db, username);
+    if (!(checkStaffSubTeach(db, subcode, section, staffId)))
+    {
+        cout << "Sorry but you do not teach this subject to this Sectioin.!" << endl;
+        return;
+    }
+    int present;
+    cout << "\nEnter the RollNo of Student: ";
+    cin >> roll_no;
+    // Check if the connection is valid
+    if (conn == nullptr)
+    {
+        cerr << "Database connection error" << endl;
+        return;
+    }
+    // Query to get all students with the given criteria
+    string studentQuery = "SELECT student_id FROM student WHERE branch_code = '" + branchCode
+        + "' AND section = '" + section + "' AND semester = " + to_string(semester) + "AND roll_no =" + to_string(roll_no);
+    // Execute the student query
+    if (mysql_query(conn, studentQuery.c_str()))
+    {
+        cerr << "Error in retrieving students: " << mysql_error(conn) << endl;
+        return;
+    }
+    MYSQL_RES* studentRes = mysql_store_result(conn);
+    if (studentRes == nullptr) {
+        cerr << "Error in storing student result: " << mysql_error(conn) << endl;
+        return;
+    }
+    int total_attendance = getTotalAttendance(db, branchCode, semester, section, subcode);
+    cout << "Total Attendance in " + subcode + " : "<< total_attendance <<"\n";
+    cout << "Enter the Present Value: ";
+    cin >> present;
+    if (present > total_attendance)
+    {
+        cout << "Present Can't be greater than Total Attendance: " + total_attendance<<"\n";
+        return;
+    }
+    MYSQL_ROW studentRow;
+    while ((studentRow = mysql_fetch_row(studentRes)))
+    {
+        int studentId = atoi(studentRow[0]);
+        if (!(checkStudentRollExist(db, branchCode, semester, section, roll_no)))
+        {
+            cout << "Roll No: " << roll_no << " is not registered or not exists! " << endl;
+            continue;
+        }
+        // Query to check if the student already exists in the attendance table
+        string attendanceCheckQuery = "SELECT COUNT(*) FROM attendance WHERE student_id = " + to_string(studentId)
+            + " AND branch_code = '" + branchCode + "' AND section = '" + section
+            + "' AND semester = " + to_string(semester) +" AND sub_code = '" + subcode+ "'";
+        // Execute the attendance check query
+        if (mysql_query(conn, attendanceCheckQuery.c_str())) {
+            cerr << "Error in checking attendance: " << mysql_error(conn) << endl;
+            mysql_free_result(studentRes);
+            return;
+        }
+        MYSQL_RES* attendanceCheckRes = mysql_store_result(conn);
+        if (attendanceCheckRes == nullptr) {
+            cerr << "Error in storing attendance check result: " << mysql_error(conn) << endl;
+            mysql_free_result(studentRes);
+            return;
+        }
+        MYSQL_ROW attendanceCheckRow = mysql_fetch_row(attendanceCheckRes);
+        int count = attendanceCheckRow ? atoi(attendanceCheckRow[0]) : 0;
+        mysql_free_result(attendanceCheckRes);
+        if (count == 0)
+        {
+            // Insert the student into the attendance table if they do not exist
+            string insertQuery = "INSERT INTO attendance (student_id, branch_code, semester, section, sub_code, present, total, roll_no) VALUES ("
+                + to_string(studentId) + ", '" + branchCode + "', " + to_string(semester)
+                + ", '" + section + "', '" + subcode + "', " + to_string(present) + ", " + to_string(total_attendance) + ", " + to_string(roll_no) + ")";
+            if (mysql_query(conn, insertQuery.c_str())) {
+                cerr << "Error in inserting attendance: " << mysql_error(conn) << endl;
+                mysql_free_result(studentRes);
+                return;
+            }
+        }
+        else
+        {
+            string updateQuery = "UPDATE attendance SET total = " + to_string(total_attendance) + ", present = " + to_string(present) + " WHERE student_id = " + to_string(studentId)
+                + " AND branch_code = '" + branchCode + "' AND section = '" + section
+                + "' AND semester = " + to_string(semester) + " AND sub_code = '" + subcode + "'";
+            if (mysql_query(conn, updateQuery.c_str()))
+            {
+                cerr << "Error in updating attendance: " << mysql_error(conn) << endl;
+                mysql_free_result(studentRes);
+                return;
+            }
+        }
+    }
+    // Free the student result
+    mysql_free_result(studentRes);
+}
+*/
 
 void Staff::showStudentMarks(Database& db, string& branch_code, int semester, string& section, string& sub_code, vector<int>& student_ids, vector<int>& rollNo)
 {
@@ -2107,13 +2230,15 @@ void Staff::staffMenu(Database& db, string& user)
 {
     int choice, ch1, ch2;
     string username;
+    string userType = "staff";
     do
     {
         cout << "\nStaff Menu:" << endl;
         cout << "1. View Data" << endl;
         cout << "2. Attendance" << endl;
         cout << "3. Marks" << endl;
-        cout << "4. Exit" << endl;
+        cout << "4. Change Password" << endl;
+        cout << "5. Exit" << endl;
         cout << "Enter your choice: ";
         cin >> choice;
         // Check if the input operation failed
@@ -2324,12 +2449,58 @@ void Staff::staffMenu(Database& db, string& user)
             } while (ch1 != 3);
             break;
         case 4:
+            do {
+                cout << "1. By old Password\n";
+                cout << "2. By Email OTP\n";
+                cout << "Enter your choice: ";
+                cin >> ch2;
+                // Check if the input operation failed
+                if (cin.fail())
+                {
+                    cin.clear(); // Clear the error state
+                    cin.ignore(50, '\n');
+                    cout << "Invalid input. Please enter a number." << endl << endl;
+                    continue; // Skip the switch statement and prompt again
+                }
+                switch (ch2)
+                {
+                case 1:
+                    passFobj.changePasswordKnown(db);
+                    break;
+                case 2:
+
+                    cout << "Enter username : ";
+                    cin >> username;
+                    cout << "Enter the type of user [ admin | staff | student ]" << endl;
+                    cin >> userType;
+                    if (userType != "admin" && userType != "staff" && userType != "student")
+                    {
+                        cout << "Wrong Type !" << endl;
+                        break;
+                    }
+                    if (!(passFobj.checkExistsUser(db, username, userType)))
+                    {
+                        cout << "User with this username doesn't exists!!\n";
+                        break;
+                    }
+                    passFobj.changePasswordOtp(db, username, userType);
+                    break;
+                case 3:
+                    cout << "Exiting Password Change Menu!!\n";
+                    break;
+                default:
+                    cout << "Invalid Choice!";
+                    break;
+                }
+            } while (ch2 != 3);
+            break;
+        case 5:
             cout << "Exiting Staff Menu..." << endl;
             break;
         default:
             cout << "Invalid choice. Please enter again." << endl;
             break;
         }
-    } while (choice != 4);
+    } while (choice != 5);
 }
 

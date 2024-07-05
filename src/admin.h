@@ -4,8 +4,8 @@
 
 #include <string>
 #include<mysql.h>
-#include<string>
 #include<vector>
+#include "PasswordFunctions.h"
 
 using namespace std;
 
@@ -16,6 +16,8 @@ class Staff;
 class Admin 
 {
 private:
+    pass passFobj;
+
     string username;
     string password;
     string realName;
@@ -24,10 +26,7 @@ private:
     string joiningDate;
     double salary;
 
-    string generateSalt();
     bool checkUserExists(Database& db, const string& username);
-    void sha256(const string inputStr, stringstream& ss);
-    void addPassword(Database& db, const string& username, const string& hash, const string& salt);
     void resetCurCgpa(Database& db, int studentId, const string& branchCode, int semester);
     void updateSemester(Database& db, int student_id, int semester);
     bool checkFeesPaid(Database& db, int student_id);
@@ -77,7 +76,6 @@ private:
     void updateStudentAttendance(Database& db);
     string getStaffSection(Database& db, int staffId, const string& subCode);
     void deleteStudent(Database& db, int student_id);
-    void changePassword(Database& db);
 
 public:
     // Constructors

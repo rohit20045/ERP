@@ -6,7 +6,8 @@ CREATE TABLE admin (
     dob DATE,
     address VARCHAR(200),
     joining_date DATE,
-    salary DECIMAL(10, 2)
+    salary DECIMAL(10, 2),
+    mail VARCHAR(60)
 );
 
 CREATE TABLE student (
@@ -24,7 +25,8 @@ CREATE TABLE student (
     branch_code VARCHAR(20),			
     semester INT,				
     cgpa DECIMAL(4, 2) CHECK (cgpa >= 0.00 AND cgpa <= 10.00), 	
-    grad_year INT						
+    grad_year INT,
+    mail VARCHAR(60)						
 );
 
 
@@ -39,7 +41,8 @@ CREATE TABLE staff (
     joining_date DATE,
     num_of_subjects INT,
     staff_id INT AUTO_INCREMENT PRIMARY KEY,
-    branch_code VARCHAR(10)
+    branch_code VARCHAR(10),
+    mail VARCHAR(60)
 );
 
 create table course_main(course_id varchar(10) PRIMARY KEY, 
@@ -138,4 +141,3 @@ CREATE TABLE holy_salt(
 	salt VARCHAR(50),
 	hash VARCHAR(100)
 );
-

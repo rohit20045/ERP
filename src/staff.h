@@ -4,12 +4,15 @@
 
 #include <string>
 #include <vector>
+#include "PasswordFunctions.h"
 using namespace std;
 
 class Database; // Forward declaration of the Database class
 
 class Staff {
 private:
+    pass passFobj;
+
     string username;
     string password;
     string realName;

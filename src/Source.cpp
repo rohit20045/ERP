@@ -8,16 +8,16 @@
 #include "staff.h"
 #include "student.h"
 
-
-
 using namespace std;
+
+#include <stdio.h>
+
 
 int main()
 {
     Database db;
     int choice;
-
-
+     
     string username, password, userType;
     do {
         cout << "-------ERP MENU-------\n";

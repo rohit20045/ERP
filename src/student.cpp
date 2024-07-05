@@ -577,7 +577,8 @@ void Student::viewStudentMarks(Database& db, string& username, string marksField
 
 void Student::studentMenu(Database& db, string& username)
 {
-    int choice,ch1;
+    int choice,ch1,ch2;
+    string userType = "student";
     do
     {
         cout << "\nStudent Menu:" << endl;
@@ -585,7 +586,8 @@ void Student::studentMenu(Database& db, string& username)
         cout << "2. View Teaching Faculty Data" << endl;
         cout << "3. View Attendance" << endl;
         cout << "4. View Marks" << endl;
-        cout << "5. Exit" << endl;
+        cout << "5. Change Password" << endl;
+        cout << "6. Exit" << endl;
         cout << "Enter your choice: ";
         cin >> choice;
         // Check if the input operation failed
@@ -644,11 +646,58 @@ void Student::studentMenu(Database& db, string& username)
             } while (ch1 != 3);
             break;
         case 5:
+            do {
+                cout << "1. By old Password\n";
+                cout << "2. By Email OTP\n";
+                cout << "Enter your choice: ";
+                cin >> ch2;
+                // Check if the input operation failed
+                if (cin.fail())
+                {
+                    cin.clear(); // Clear the error state
+                    cin.ignore(50, '\n');
+                    cout << "Invalid input. Please enter a number." << endl << endl;
+                    continue; // Skip the switch statement and prompt again
+                }
+                switch (ch2)
+                {
+                case 1:
+                    passFobj.changePasswordKnown(db);
+                    break;
+                case 2:
+
+                    cout << "Enter username : ";
+                    cin >> username;
+                    cout << "Enter the type of user [ admin | staff | student ]" << endl;
+                    cin >> userType;
+                    if (userType != "admin" && userType != "staff" && userType != "student")
+                    {
+                        cout << "Wrong Type !" << endl;
+                        break;
+                    }
+                    if (!(passFobj.checkExistsUser(db, username, userType)))
+                    {
+                        cout << "User with this username doesn't exists!!\n";
+                        break;
+                    }
+                    passFobj.changePasswordOtp(db, username, userType);
+                    break;
+                case 3:
+                    cout << "Exiting Password Change Menu!!\n";
+                    break;
+                default:
+                    cout << "Invalid Choice!";
+                    break;
+                }
+            } while (ch2 != 3);
+            break;
+
+        case 6:
             cout << "Exiting Student Menu..." << endl;
             break;
         default:
             cout << "Invalid choice. Please enter again." << endl;
             break;
         }
-    } while (choice != 5);
+    } while (choice != 6);
 }

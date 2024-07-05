@@ -5,7 +5,7 @@
 #include <iomanip>
 #include<algorithm>
 #include<map>
-#include <openssl/sha.h>
+
 #include <sstream>
 #include<random>
 #include <conio.h>
@@ -22,6 +22,7 @@ Admin::Admin::Admin() : username(""), password(""), realName(""), dob(""), addre
 
 }
 
+
 // Getter functions to access private members
 Admin::Admin(const string& username, const string& password, const string& realName, const string& dob,
     const string& address, const string& joiningDate, double salary)
@@ -35,25 +36,10 @@ const string& Admin::getAddress() const { return address; }
 const string& Admin::getJoiningDate() const { return joiningDate; }
 double Admin::getSalary() const { return salary; }
 
-string Admin::generateSalt() 
-{
-    const string characters = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%^&*()-_=+[]{}|;:,.<>?";
-    const int length = 32;
-    string salt;
-
-    random_device rd;
-    mt19937 generator(rd());
-    uniform_int_distribution<> distribution(0, characters.size() - 1);
-
-    for (int i = 0; i < length; ++i) {
-        salt += characters[distribution(generator)];
-    }
-
-    return salt;
-}
 
 bool Admin::checkUserExists(Database& db, const string& username) 
 {
+    
     MYSQL* conn = db.getConnection();
     string query = "SELECT username FROM student WHERE username = '" + username + "' UNION "
         "SELECT username FROM staff WHERE username = '" + username + "' UNION "
@@ -76,26 +62,9 @@ bool Admin::checkUserExists(Database& db, const string& username)
     return userExists;
 }
 
-void Admin::sha256(const string inputStr, stringstream& ss)
-{
-    unsigned char hash[SHA256_DIGEST_LENGTH];
-    const unsigned char* data = (const unsigned char*)inputStr.c_str();
-    SHA256(data, inputStr.size(), hash);
-    for (int i = 0; i < SHA256_DIGEST_LENGTH; i++)
-    {
-        ss << hex << setw(2) << setfill('0') << (int)hash[i];
-    }
-}
 
-void Admin::addPassword(Database& db, const string& username,const string& hash, const string & salt)
-{
-    MYSQL* conn = db.getConnection();
-    string query = "INSERT INTO holy_salt (username, salt, hash) VALUES ('" + username + "', '" + salt + "', '" + hash + "')";
 
-    if (mysql_query(conn, query.c_str())) {
-        cerr << "Error executing query: " << mysql_error(conn) << endl;
-    }
-}
+
 void Admin::resetCurCgpa(Database& db, int studentId, const string& branchCode, int semester) 
 {
     MYSQL* conn = db.getConnection();
@@ -1336,18 +1305,20 @@ void Admin::insertAdmin(Database& db, const Admin& admin)
 
     //Password Hashing and storing
     string username = admin.getUsername();
-    string salt = generateSalt();
+    string salt = passFobj.generateSalt();
     stringstream hash;
     string password = admin.getPassword();
     password += salt;
-    sha256(password, hash);
+    passFobj.sha256(password, hash);
     password = hash.str();
-    addPassword(db,username,password,salt);
-
-    string query = "INSERT INTO admin (username, password, real_name, dob, address, joining_date, salary) VALUES ('"
+    passFobj.addPassword(db,username,password,salt);
+    string mail;
+    cout << "Enter the mail : ";
+    cin >> mail;
+    string query = "INSERT INTO admin (username, password, real_name, dob, address, joining_date, salary,mail) VALUES ('"
         + admin.getUsername() + "', '" + password + "', '" + admin.getRealName() + "', "
         + admin.getDob() + ", '" + admin.getAddress() + "', '" + admin.getJoiningDate() + "', "
-        + to_string(admin.getSalary()) + ")";
+        + to_string(admin.getSalary()) + ", '" + mail + "')";
     if (mysql_query(conn, query.c_str())) {
         cerr << "Error in inserting admin: " << mysql_error(conn) << endl;
     }
@@ -1433,20 +1404,24 @@ void Admin::insertStudent(Database& db, const Student& student)
 
     //Password Hashing and storing
     string username = student.getUsername();
-    string salt = generateSalt();
+    string salt = passFobj.generateSalt();
     stringstream hash;
     string password = student.getPassword();
     password += salt;
-    sha256(password, hash);
+    passFobj.sha256(password, hash);
     password = hash.str();
 
-    addPassword(db, username, password, salt);
+    passFobj.addPassword(db, username, password, salt);
 
-    string query = "INSERT INTO student (username, password, real_name, address, course, branch, section, course_id, branch_code, semester,cgpa,grad_year) VALUES ('"
+    string mail;
+    cout << "Enter the mail : ";
+    cin >> mail;
+
+    string query = "INSERT INTO student (username, password, real_name, address, course, branch, section, course_id, branch_code, semester,cgpa,grad_year,mail) VALUES ('"
         + student.getUsername() + "', '" + password + "', " + " '" + student.getRealName() + "', '"
         + student.getAddress() + "', '" + student.getCourse() + "', '" + student.getBranch() + "', '" + student.getSection() + "', '"
         + student.getCourseId() + "', '" + student.getBranchCode() + "', "
-        + to_string(student.getSemester()) + ", " + "0.0 ," + to_string(grad_year) +")";
+        + to_string(student.getSemester()) + ", " + "0.0 ," + to_string(grad_year) + ",'"  + mail + "')";
     if (mysql_query(conn, query.c_str())) {
         cerr << "Error in inserting student: " << mysql_error(conn) << endl;
     }
@@ -1540,18 +1515,22 @@ void Admin::insertStaff(Database& db, const Staff& staff)
 
     //Password Hashing and storing
     string username = staff.getUsername();
-    string salt = generateSalt();
+    string salt = passFobj.generateSalt();
     stringstream hash;
     string password = staff.getPassword();
     password += salt;
-    sha256(password, hash);
+    passFobj.sha256(password, hash);
     password = hash.str();
-    addPassword(db, username, password, salt);
+    passFobj.addPassword(db, username, password, salt);
 
-    string query = "INSERT INTO staff (username, password, real_name, dob, branch, salary, address, joining_date, num_of_subjects, branch_code) VALUES ('"
+    string mail;
+    cout << "Enter the mail : ";
+    cin >> mail;
+
+    string query = "INSERT INTO staff (username, password, real_name, dob, branch, salary, address, joining_date, num_of_subjects, branch_code,mail) VALUES ('"
         + staff.getUsername() + "', '" + password + "', '" + staff.getRealName() + "', '" + staff.getDob() + "', '"
         + staff.getBranch() + "', " + to_string(staff.getSalary()) + ", '" + staff.getAddress() + "', '" + staff.getJoiningDate() + "', "
-        + to_string(staff.getNumOfSubjects()) + ", '" + staff.getBranchCode() + "')";
+        + to_string(staff.getNumOfSubjects()) + ", '" + staff.getBranchCode() + "', '"+ mail +"')";
     if (mysql_query(conn, query.c_str())) {
         cerr << "Error in inserting staff: " << mysql_error(conn) << endl;
     }
@@ -1628,7 +1607,7 @@ void Admin::addNewUser(Database& db)
         return;
     }
     cout << "Enter password: ";
-    password="";
+    password = "";
 
     //Making the password not Visible
     char ch;
@@ -2495,83 +2474,8 @@ void Admin::updateStudentAttendance(Database& db)
 }
 
 
-void Admin::changePassword(Database& db)
-{
-    MYSQL* conn = db.getConnection();
-    string username;
-    cout << "Enter your Username: ";
-    cin >> username;
-    if (!(checkUserExists(db, username)))
-    {
-        cout << "User doesn't exists!\n";
-        return;
-    }
-    string old_pass;
-    cout << "Enter the Old Password: ";
-    cin >> old_pass;
-
-    string query = "SELECT hash, salt FROM holy_salt WHERE username = '" + username + "'";
-
-    if (mysql_query(conn, query.c_str())) 
-    {
-        cerr << "Error executing query: " << mysql_error(conn) << endl;
-        return;
-    }
-
-    MYSQL_RES* res = mysql_store_result(conn);
-    if (res == nullptr) {
-        cerr << "Error storing result: " << mysql_error(conn) << endl;
-        return;
-    }
-
-    MYSQL_ROW row;
-    string salt = "";
-    string og_hash= "";
-    while ((row = mysql_fetch_row(res))) 
-    {
-        og_hash = row[0] ? row[0] : "";
-        salt = row[1] ? row[1] : "";
-    }
-
-    mysql_free_result(res);
-
-    old_pass += salt;
-    stringstream hash1;
-    sha256(old_pass, hash1);
-    string new_pass = hash1.str();
-
-    if (og_hash == new_pass)
-    {
-        string pass;
-        cout << "---Password Matched---\n";
-        cout << "Enter the New Password: ";
-        cin >> pass;
-        string salt1 = generateSalt();
-        stringstream hash1;
-        pass += salt1;
-        sha256(pass, hash1);
-        pass = hash1.str();
-
-        string query = "UPDATE holy_salt SET hash = '" + pass + "', salt = '" + salt1 + "' WHERE username = '" + username + "'";
-
-        if (mysql_query(conn, query.c_str())) 
-        {
-            cerr << "Error executing query: " << mysql_error(conn) << endl;
-        }
-        else 
-        {
-            cout << "---Password Sucessfullly Updated---" << endl;
-        }
-
-    }
-    else
-    {
-        cout << "Password Doesn't Match with Old Password!!\n";
-        return;
-    }
 
 
-}
 
 void Admin::adminMenu(Database& db, string& user)
 {
@@ -2989,8 +2893,53 @@ void Admin::adminMenu(Database& db, string& user)
             } while (ch2 != 3);
             break;
         case 9:
-            changePassword(db);
+            do {
+                cout << "-----------------------"<<endl;
+                cout << "1. By old Password\n";
+                cout << "2. By Email OTP\n";
+                cout << "3. Exit\n";
+                cout << "Enter your choice: ";
+                cin >> ch2;
+                // Check if the input operation failed
+                if (cin.fail())
+                {
+                    cin.clear(); // Clear the error state
+                    cin.ignore(50, '\n');
+                    cout << "Invalid input. Please enter a number." << endl << endl;
+                    continue; // Skip the switch statement and prompt again
+                }
+                switch (ch2)
+                {
+                case 1:
+                    passFobj.changePasswordKnown(db);
+                    break;
+                case 2:
+                    cout << "Enter username : ";
+                    cin >> username;
+                    cout << "Enter the type of user [ admin | staff | student ]" << endl;
+                    cin >> userType;
+                    if (userType != "admin" && userType != "staff" && userType != "student")
+                    {
+                        cout << "Wrong Type !" << endl;
+                        break;
+                    }
+                    if (!(checkExistsUser(db, username, userType)))
+                    {
+                        cout << "User with this username doesn't exists!!\n";
+                        break;
+                    }
+                    passFobj.changePasswordOtp(db, username,userType);
+                    break;
+                case 3:
+                    cout << "Exiting Password Change Menu!!\n";
+                    break;
+                default:
+                    cout << "Invalid Choice!";
+                    break;
+                }
+            } while (ch2 != 3);
             break;
+
         case 10:
             cout << "Exiting Admin Menu..." << endl;
             break;
