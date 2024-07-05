@@ -1,8 +1,8 @@
 # ERP
 ## Description
-This ERP project uses C++ , MySQL and Openssl. Openssl to safely store our password in the database and MySQL for our backend database. 
+This ERP project uses C++ , MySQL, Openssl and Curl. Openssl to safely store our password in the database and MySQL for our backend database. 
 OpenSSL is used to provide extra security for password we have used sha256 hashing to secure data and salt too. 
-The password is salted then hashed then they are stored in separate table in database with username.
+The password is salted then hashed then they are stored in separate table in database with username.Curl to send email otp to user gmail account.
 
 The project has 3 types of users admin, staff and student. Each User has different level of authority and functions they can implement. 
 - Admin can do everything from adding fees, semester change, marks update, Attendance Update, Salary Change/Add, Add User and Delete User etc.
@@ -10,13 +10,14 @@ The project has 3 types of users admin, staff and student. Each User has differe
   You can only change/Add changes to your own teaching section of that subject.
 - Student on other hand has least authority they can only view data like view attendance, view marks, view own data, view teaching faculty data etc.
 ## Motive
-- I wanted to create a OOPS project with a backend for database so I created this then little by little I added more functionalities as I went Adding OpenSSL in last.
+- I wanted to create a OOPS project with a backend for database so I created this then little by little I added more functionalities as I went Adding OpenSSL and Curl in last.
 
 ## Software Version
 - Visual Studio Version: Microsoft Visual Studio Community 2019 Version 16.11.31
 - MySQL version : mysql  Ver 8.0.37 for Win64 on x86_64 (MySQL Community Server - GPL)
 - OpenSSL version : OpenSSL 3.3.1 4 Jun 2024 (Library: OpenSSL 3.3.1 4 Jun 2024)
-- In future some files could be different as of now but the way to install and give path will probably be same. This project is made in 14-06-2024
+- Curl version : curl 8.7.1 (Windows) libcurl/8.7.1 Schannel zlib/1.3 WinIDN
+- In future some files could be different as of now but the way to install and give path will probably be same. This project was completed on 05-07-2024
 ## Installation
 > [!IMPORTANT]
 > While giving the paths for the directory in Visual Studion make sure that you are in x64 platform and Release Configuration. I also have provided the screenshots check them out for better understanding
@@ -25,6 +26,9 @@ The project has 3 types of users admin, staff and student. Each User has differe
 Adress bar             
 :-------------------------:
 ![Alt text](screenshots/address_bar.png)  
+
+> [!IMPORTANT]
+> If you having problem in adding dependencies in project properties then you can first look at screenshots below to get better understanding of work.
 
 ### Installing Dependencies
 #### MySQL
@@ -60,9 +64,9 @@ Adress bar
 - https://stackoverflow.com/questions/9507353/how-do-i-install-and-use-curl-on-windows
 - The top answer "You might already have curl" shows how.
 - The below steps are still needed to be done even if you install again.
-- Go to start Visual Studio 20xx and in there-  x64 native tools command prompt or Developer command prompt both are fine
+- Go to start -> Visual Studio 20xx -> x64 native tools command prompt or Developer command prompt anyone is fine
 - now create a folder 'curl' somewhere for curl library it will be permanemt so choose c:\ or d:\ somewhere safe
-- Now copy the address from address bar then type in prompt: cd C:\curl\
+- Now copy the address from address bar then type in visual studio prompt: cd C:\curl\
 - then type these command
 - git clone https://github.com/curl/curl.git
 - buildconf.bat
