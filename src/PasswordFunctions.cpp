@@ -21,7 +21,7 @@ using namespace std;
 
 #pragma warning(disable : 4996)
 
-#define FROM_MAIL     "patbot2045@gmail.com"
+#define FROM_MAIL     "sender_email@gmail.com"
 
 pass::pass() {
 
@@ -260,7 +260,7 @@ void pass::addPassword(Database& db, const string& username, const string& hash,
 
 void pass::sendMail(string& email,string& otp,string& username)
 {
-    int shift = 6; 
+    int shift = 12; 
     string password = getPass();
     cout << "Pass : " << password << endl;
     if (password == "0")
@@ -279,7 +279,7 @@ void pass::sendMail(string& email,string& otp,string& username)
         "To: " + email + "\r\n"
         "From: " FROM_MAIL "\r\n"
         "Message-ID: <" + MesUuid + "@"
-        "graphic_era_university_erp_cell.org>\r\n"
+        "Your organisation.org>\r\n"
         "Subject: Erp Password Reset OTP\r\n"
         "MIME-Version: 1.0\r\n"
         "Content-Type: multipart/alternative; boundary=\"boundary42\"\r\n"
@@ -288,7 +288,7 @@ void pass::sendMail(string& email,string& otp,string& username)
         "Content-Type: text/plain; charset=UTF-8\r\n"
         "Content-Transfer-Encoding: 7bit\r\n"
         "\r\n"
-        "Graphic Era University - Erp Password Reset \r\n"
+        "Your Organisation Name - Erp Password Reset \r\n"
         "UserName: " + username + "\r\n"
         "\r\n"
         "Your Password Reset OTP is: " + otp + "\r\n"
@@ -299,7 +299,7 @@ void pass::sendMail(string& email,string& otp,string& username)
         "\r\n"
         "<html>\r\n"
         "<body>\r\n"
-        "<p>Graphic Era University - Erp Password Reset</p>\r\n"
+        "<p>Your Organisation - Erp Password Reset</p>\r\n"
         "<p>UserName: " + username + "</p>\r\n"
         "<p>Your Password Reset OTP is: <strong style=\"font-size: 24px;\">" + otp + "</strong></p>\r\n"
         "</body>\r\n"
@@ -317,7 +317,7 @@ void pass::sendMail(string& email,string& otp,string& username)
     curl = curl_easy_init();
     if (curl) {
         /* Set username and password */
-        curl_easy_setopt(curl, CURLOPT_USERNAME, "patbot2045@gmail.com");
+        curl_easy_setopt(curl, CURLOPT_USERNAME, "sender_email@gmail.com");
         curl_easy_setopt(curl, CURLOPT_PASSWORD, pass_app);
 
         /* This is the URL for your mailserver. Note the use of smtps:// rather
