@@ -12,6 +12,10 @@ class pass
 
 public:
 	pass();
+	bool is_pdf(const std::string& file_content);
+	bool is_doc(const std::string& file_content);
+	bool assignmentAlreadySubmitted(Database& db, int assignNo, int studentId);
+	bool checkDeadlinePass(Database& db, int assignNo);
 	string caesarEncrypt(const string& text, int shift);
 	string caesarDecrypt(const string& text, int shift);
 	string getPass();

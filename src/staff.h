@@ -65,6 +65,12 @@ private:
     string getBranchCodeFromStaffId(Database& db, int staffId);
     vector<int> getRollNoFromAttendance(Database& db, const string& branchCode, int semester, const string& section, const string& subCode);
     string getStaffSection(Database& db, int staffId, const string& subCode);
+    void downloadAssign(Database& db, int assign_no, const string& assign_name, const string& section, int semester);
+    void downloadAssignment(Database& db, string& username);
+    vector<pair<int, string>> findAssignmentsByStaff(Database& db, int staff_id);
+    void viewAssignment(Database& db, string& username);
+    void assignment_upload(Database& db, string& username);
+
 
 public:
     // Constructors

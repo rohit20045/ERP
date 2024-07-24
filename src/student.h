@@ -42,6 +42,7 @@ private:
     void viewStudentAttendance(Database& db, string& username);
     void viewStudentMarks(Database& db, string& username, string marksField);
     bool checkSemesterExists(Database& db, string branchCode, int semester);
+    void submitPendingAssignment(Database& db, string& username);
 
 public:
     // Constructors

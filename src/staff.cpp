@@ -4,9 +4,16 @@
 #include<vector>
 #include <iomanip>
 #include<algorithm>
+#include <fstream>
+#include <sstream>
+#include<ctime>
+#include <direct.h>
+#include <utility>
 
 #include "database.h"
 #include "staff.h"
+
+#pragma warning(disable : 4996)
 
 using namespace std;
 
@@ -2226,6 +2233,425 @@ void Staff::viewStudentAttendenceSec(Database& db, string& username)
     mysql_free_result(res);
 }
 
+
+
+vector<pair<int,string>> Staff::findAssignmentsByStaff(Database& db, int staff_id) 
+{
+    vector<pair<int, string>> assignments;
+
+    MYSQL* conn = db.getConnection();
+
+    // Prepare the SQL query to find assign_no and name by staff_id
+    string query = "SELECT assign_no, name FROM assignment_ques WHERE staff_id = " + to_string(staff_id);
+
+    if (mysql_query(conn, query.c_str())) {
+        cerr << "Error in retrieving assignment numbers: " << mysql_error(conn) << endl;
+        return assignments;
+    }
+
+    MYSQL_RES* res = mysql_store_result(conn);
+    if (res == nullptr) {
+        cerr << "Error in storing result: " << mysql_error(conn) << endl;
+        return assignments;
+    }
+
+    MYSQL_ROW row;
+
+    // Fetch and store each assign_no and name in the vector
+    while ((row = mysql_fetch_row(res)) != nullptr) {
+        int assign_no = atoi(row[0]);
+        string name = row[1];
+        assignments.push_back(make_pair(assign_no, name));
+    }
+
+    // Clean up
+    mysql_free_result(res);
+
+    return assignments;
+}
+
+void Staff::downloadAssign(Database& db, int assign_no, const string& assign_name, const string& section, int semester) 
+{
+    string base_path;
+    cin.ignore();
+    cout << "Enter the base path for assignments (e.g., D:\\assignment): ";
+    getline(cin,base_path);
+
+    // Create the folder structure
+    string semester_folder = base_path + "\\" + "Semester "+to_string(semester);
+    string assign_folder = semester_folder + "\\" + assign_name;
+    string section_folder = assign_folder + "\\" + "Section "+section;
+
+    // Create directories if they don't exist
+    _mkdir(semester_folder.c_str());
+    _mkdir(assign_folder.c_str());
+    _mkdir(section_folder.c_str());
+
+    MYSQL* conn = db.getConnection();
+
+    // Prepare the SQL query to find files by assign_no
+    string query = "SELECT student_id, roll_no, file,type FROM assignment_files WHERE assign_no = " + to_string(assign_no);
+
+    if (mysql_query(conn, query.c_str())) {
+        cerr << "Error in retrieving assignment files: " << mysql_error(conn) << endl;
+        return;
+    }
+
+    MYSQL_RES* res = mysql_store_result(conn);
+    if (res == nullptr) {
+        cerr << "Error in storing result: " << mysql_error(conn) << endl;
+        return;
+    }
+
+    MYSQL_ROW row;
+
+    // Fetch and store each file in the appropriate folder
+    if((row = mysql_fetch_row(res)) != nullptr) 
+    {
+        int student_id = atoi(row[0]);
+        int roll_no = atoi(row[1]);
+        string type = row[3];
+        unsigned long* lengths = mysql_fetch_lengths(res);
+        vector<char> file_data(row[2], row[2] + lengths[2]);
+
+        // Create the file path
+        string file_path = section_folder + "\\" + section + "_" + to_string(roll_no) + "_" + to_string(student_id) + "."+type;
+
+        // Write the file data to the file
+        ofstream outfile(file_path, ios::binary);
+        outfile.write(file_data.data(), file_data.size());
+        outfile.close();
+
+        cout << "Assignments downloaded successfully." << endl;
+    }
+    // Clean up
+    mysql_free_result(res);
+
+}
+
+void Staff::downloadAssignment(Database& db, string& username)
+{
+    MYSQL* conn = db.getConnection();
+
+    int staffid = getStaffIdByUsername(db, username);
+    vector<pair<int, string>>assign_no = findAssignmentsByStaff(db, staffid);
+    if (assign_no.size() == 0)
+    {
+        cout << "No Assignment Given to Show!!\n";
+        return;
+    }
+    int i = 1;
+    bool assignPresen = false;
+    cout << endl;
+    vector<int>assignToDownload;
+    for (const auto& assignment : assign_no)
+    {
+        int assignNo = assignment.first;
+
+        if (!(passFobj.checkDeadlinePass(db, assignNo)))
+        {
+            continue;
+        }
+
+        string quer = "SELECT section,semester,deadline_date FROM assignment_ques WHERE assign_no = " + to_string(assignNo);
+
+        if (mysql_query(conn, quer.c_str()))
+        {
+            cerr << "Error in retrieving assignment Section " << mysql_error(conn) << endl;
+            return;
+        }
+        MYSQL_RES* res = mysql_store_result(conn);
+        if (res == nullptr) {
+            cerr << "Error in storing result: " << mysql_error(conn) << endl;
+        }
+
+        MYSQL_ROW row;
+        string section;
+        int semes = 1;
+        string deadline_date;
+        // Fetch and store each assign_no and name in the vector
+        if((row = mysql_fetch_row(res)) != nullptr) 
+        {
+            section = row[0];
+            semes = atoi(row[1]);
+            deadline_date = row[2];
+        }
+        assignPresen = true;
+        string assignName = assignment.second;
+        assignToDownload.push_back(assignNo);
+        cout << i << " . " << assignName << " , Semester : " << semes << " , Sec : " << section << " , Deadline Date : "<<deadline_date<<endl;
+        i += 1;
+        mysql_free_result(res);
+    }
+    if (!(assignPresen))
+    {
+        cout << "No Assignment Past Deadline Yet or No Assignment Given!!\n";
+        return;
+    }
+    cout << i << " . Exit\n";
+    int ch;
+    cout << "Enter the choice : ";
+    cin >> ch;
+
+    // Check if the input operation failed
+    if (cin.fail())
+    {
+        cin.clear(); // Clear the error state
+        cin.ignore(50, '\n');
+        cout << "Invalid input. Please enter a number." << endl;
+        return; // Skip the switch statement and prompt again
+    }
+    if (ch == i)
+    {
+        cout << "Exiting!!\n\n";
+        return;
+    }
+    if (ch <= 0 || ch > i)
+    {
+        cout << "Invalid choice. Please Enter a Valid Choice!!\n";
+        return;
+    }
+    if (ch >= 1 && ch < i)
+    {
+        int cur_assign = assignToDownload[ch-1];
+
+        string quer = "SELECT section,semester,name FROM assignment_ques WHERE assign_no = " + to_string(cur_assign);
+
+        if (mysql_query(conn, quer.c_str()))
+        {
+            cerr << "Error in retrieving assignment Section " << mysql_error(conn) << endl;
+            return;
+        }
+        MYSQL_RES* res = mysql_store_result(conn);
+        if (res == nullptr) {
+            cerr << "Error in storing result: " << mysql_error(conn) << endl;
+        }
+
+        MYSQL_ROW row;
+        string section;
+        int semes = 1;
+        string assign_name;
+        // Fetch and store each assign_no and name in the vector
+        if((row = mysql_fetch_row(res)) != nullptr) 
+        {
+            section = row[0];
+            semes = atoi(row[1]);
+            assign_name = row[2];
+        }
+
+        downloadAssign(db, cur_assign, assign_name, section, semes);
+    }
+}
+
+void Staff::viewAssignment(Database& db, string& username)
+{
+    MYSQL* conn = db.getConnection();
+    int staffid = getStaffIdByUsername(db, username);
+    vector<pair<int,string>>assign_no = findAssignmentsByStaff(db, staffid);
+    if (assign_no.size() == 0)
+    {
+        cout << "No Assignment Given to Show!!\n";
+        return;
+    }
+    int i = 1;
+    
+    cout << endl;
+    vector<string>deadline_dates;
+    
+    for (const auto& assignment : assign_no) 
+    {
+        int assignNo = assignment.first;
+
+        string quer = "SELECT section,semester,deadline_date FROM assignment_ques WHERE assign_no = " + to_string(assignNo);
+
+        if (mysql_query(conn, quer.c_str())) 
+        {
+            cerr << "Error in retrieving assignment information " << mysql_error(conn) << endl;
+            return;
+        }
+        MYSQL_RES* res = mysql_store_result(conn);
+        if (res == nullptr) {
+            cerr << "Error in storing result: " << mysql_error(conn) << endl;
+        }
+
+        MYSQL_ROW row;
+        string section;
+        int semes=1;
+        // Fetch and store each assign_no and name in the vector
+        if((row = mysql_fetch_row(res)) != nullptr) 
+        {
+            section = row[0];
+            semes = atoi(row[1]);
+            deadline_dates.push_back (row[2]);
+        }
+        else
+        {
+            continue;
+        }
+
+        string assignName = assignment.second;
+        cout << i << " . " << assignName <<" , Semester : "<<semes<<" , Sec : "<<section<<endl;
+        i+=1;
+
+        mysql_free_result(res);
+    }
+    cout << i << " . Exit" << endl;
+    int ch;
+    cout << "Enter the choice : ";
+    cin >> ch;
+    cout << endl;
+    // Check if the input operation failed
+    if (cin.fail())
+    {
+        cin.clear(); // Clear the error state
+        cin.ignore(50, '\n');
+        cout << "Invalid input. Please enter a number." << endl ;
+        return; // Skip the switch statement and prompt again
+    }
+
+    if (ch == i)
+    {
+        cout << "Exiting!!\n\n";
+        return;
+    }
+    if (ch<=0 || ch > i)
+    {
+        cout << "Invalid choice. Please Enter a Valid Choice!!\n";
+        return;
+    }
+    if (ch >= 1 && ch < i)
+    {
+        int cur_assignNo = assign_no[ch-1].first;
+        string cur_assinName = assign_no[ch-1].second;
+        cout << "Assignment : " << cur_assinName << endl;
+        cout <<"Deadline Date : " <<deadline_dates[ch - 1] << endl;
+        if (passFobj.checkDeadlinePass(db, cur_assignNo))
+        {
+            string que = "SELECT student_id,roll_no FROM assignment_files WHERE assign_no = " + to_string(cur_assignNo);
+
+            if (mysql_query(conn, que.c_str()))
+            {
+                cerr << "Error in retrieving assignment Section " << mysql_error(conn) << endl;
+                return;
+            }
+            MYSQL_RES* resi = mysql_store_result(conn);
+            if (resi == nullptr) {
+                cerr << "Error in storing result: " << mysql_error(conn) << endl;
+                return;
+            }
+            MYSQL_ROW rowi;
+            string section;
+            int semes = 1;
+
+            cout << left << setw(15) << "Student ID"
+                << setw(15) << "Roll No" << endl;
+
+            cout << string(35, '-') << endl;
+
+            // Fetch and store each assign_no and name in the vector
+            while ((rowi = mysql_fetch_row(resi)) != nullptr) 
+            {
+                cout << left << setw(15) << rowi[0]
+                    << left << setw(15) << rowi[1] << endl;
+            }
+            mysql_free_result(resi);
+        }
+        else
+        {
+            cout << "Deadline Has not Passed!!\n\n";
+            return;
+        }
+    }
+}
+
+void Staff::assignment_upload(Database& db, string& username) 
+{
+    int staffid = getStaffIdByUsername(db, username);
+
+    int semester;
+    string section,name,deadline_date,file_path,branch_code,subcode;
+
+    cout << "Enter the semester: ";
+    cin >> semester;
+    branch_code = getBranchCodeFromStaffId(db, staffid);
+
+    if (!(checkSemesterExists(db, branch_code, semester)))
+    {
+        cout<<"Invalid semester!!\n";
+        return;
+    }
+    cout << "Enter the seciton : ";
+    cin >> section;
+    if (!(checkSectionExists(db,branch_code,semester,section)))
+    {
+        cout<<"This section of this branch and semester doesn't exists!!\n";
+        return;
+    }
+    cout<<"Enter the subcode of assignment: ";
+    cin>>subcode;
+    if (!(checkStaffSubTeach(db,subcode,section,staffid)))
+    {
+        cout<<"You don't this suubject to this section!!\n";
+       return;
+    }
+    cin.ignore();
+    cout << "Enter the name of the Assignment: ";
+    getline(cin, name);
+    cout << "Enter the deadline_date: (YYYY-MM-DD): ";
+    cin >> deadline_date;
+    cin.ignore();
+    cout << "Enter the path of complete file with file_name: ";
+    getline(cin, file_path);
+
+    string file_type;
+    if (file_path.substr(file_path.find_last_of(".") + 1) == "pdf") {
+        file_type = "pdf";
+    }
+    else if ((file_path.substr(file_path.find_last_of(".") + 1) == "doc") || (file_path.substr(file_path.find_last_of(".") + 1) == "docx")) {
+        file_type = "doc";
+    }
+    else {
+        cerr << "Invalid file type. Only PDF and DOC are allowed." << endl;
+        return;
+    }
+
+
+    // Read the file content
+    ifstream file(file_path, ios::binary);
+    if (!file.is_open()) {
+        cerr << "Unable to open file: " << file_path << endl;
+        return;
+    }
+
+
+    stringstream buffer;
+    buffer << file.rdbuf();
+    string file_content = buffer.str();
+    file.close();
+
+    
+
+    // Escape file content to be safely used in SQL query
+    MYSQL* conn = db.getConnection();
+    char* escaped_file_content = new char[file_content.length() * 2 + 1];
+    mysql_real_escape_string(conn, escaped_file_content, file_content.c_str(), file_content.length());
+
+    // Prepare the SQL query
+    string insertQuery = "INSERT INTO assignment_ques (staff_id, section, semester, name, deadline_date, file) VALUES (" +
+        to_string(staffid) + ", '" + section + "', " + to_string(semester) + ", '" + name +
+        "', '" + deadline_date + "', '" + string(escaped_file_content) + "')";
+
+    // Execute the query
+    if (mysql_query(conn, insertQuery.c_str())) {
+        cerr << "Error in submitting assignment: " << mysql_error(conn) << endl;
+    }
+    else {
+        cout << "Assignment submitted successfully." << endl;
+    }
+    delete[] escaped_file_content;
+}
+
+
 void Staff::staffMenu(Database& db, string& user)
 {
     int choice, ch1, ch2;
@@ -2237,8 +2663,9 @@ void Staff::staffMenu(Database& db, string& user)
         cout << "1. View Data" << endl;
         cout << "2. Attendance" << endl;
         cout << "3. Marks" << endl;
-        cout << "4. Change Password" << endl;
-        cout << "5. Exit" << endl;
+        cout << "4. Assignment" << endl;
+        cout << "5. Change Password" << endl;
+        cout << "6. Exit" << endl;
         cout << "Enter your choice: ";
         cin >> choice;
         // Check if the input operation failed
@@ -2450,6 +2877,42 @@ void Staff::staffMenu(Database& db, string& user)
             break;
         case 4:
             do {
+                cout << "1. View Assignments\n";
+                cout << "2. Upload Assignment\n";
+                cout << "3. Download Assignments\n";
+                cout << "4. Exit\n";
+                cout << "Enter the Choice : ";
+                cin >> ch2;
+                // Check if the input operation failed
+                if (cin.fail())
+                {
+                    cin.clear(); // Clear the error state
+                    cin.ignore(50, '\n');
+                    cout << "Invalid input. Please enter a number." << endl << endl;
+                    continue; // Skip the switch statement and prompt again
+                }
+                switch (ch2)
+                {
+                case 1:
+                    viewAssignment(db, user);
+                    break;
+                case 2:
+                    assignment_upload(db, user);
+                    break;
+                case 3:
+                    downloadAssignment(db, user);
+                    break;
+                case 4:
+                    cout << "Exiting Assignment Menu!!\n";
+                    break;
+                default:
+                    cout << "Invalid Choice!";
+                    break;
+                }
+            } while (ch2 != 4);
+            break;
+        case 5:
+            do {
                 cout << "1. By old Password\n";
                 cout << "2. By Email OTP\n";
                 cout << "Enter your choice: ";
@@ -2479,13 +2942,13 @@ void Staff::staffMenu(Database& db, string& user)
                 }
             } while (ch2 != 3);
             break;
-        case 5:
+        case 6:
             cout << "Exiting Staff Menu..." << endl;
             break;
         default:
             cout << "Invalid choice. Please enter again." << endl;
             break;
         }
-    } while (choice != 5);
+    } while (choice != 6);
 }
 

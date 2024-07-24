@@ -21,11 +21,93 @@ using namespace std;
 
 #pragma warning(disable : 4996)
 
-#define FROM_MAIL     "sender_email@gmail.com"
+#define FROM_MAIL     "patbot2045@gmail.com"
 
 pass::pass() {
 
 }
+
+bool pass::is_pdf(const string& file_content) 
+{
+    return file_content.compare(0, 5, "%PDF-") == 0;
+}
+
+bool pass::is_doc(const string& file_content) 
+{
+    static const unsigned char doc_magic_number[] = { 0xD0, 0xCF, 0x11, 0xE0, 0xA1, 0xB1, 0x1A, 0xE1 };
+    return file_content.compare(0, 8, reinterpret_cast<const char*>(doc_magic_number), 8) == 0;
+}
+bool pass::assignmentAlreadySubmitted(Database& db, int assignNo,int studentId)
+{
+    MYSQL* conn = db.getConnection();
+    // Prepare the SQL query to check if the assignment exists
+    string query = "SELECT COUNT(*) FROM assignment_files WHERE assign_no = " + to_string(assignNo) + " AND student_id = " + to_string(studentId);
+
+    if (mysql_query(conn, query.c_str())) {
+        cerr << "Error in querying database: " << mysql_error(conn) << endl;
+        return false;
+    }
+
+    MYSQL_RES* res = mysql_store_result(conn);
+    if (res == nullptr) {
+        cerr << "Error in storing result: " << mysql_error(conn) << endl;
+        return false;
+    }
+
+    MYSQL_ROW row = mysql_fetch_row(res);
+    bool exists = atoi(row[0]) > 0;
+
+    // Clean up
+    mysql_free_result(res);
+
+    return exists;
+}
+
+
+bool pass::checkDeadlinePass(Database& db, int assignNo)
+{
+    MYSQL* conn = db.getConnection();
+    string query = "SELECT deadline_date from assignment_ques WHERE assign_no = " + to_string(assignNo);
+    if (mysql_query(conn, query.c_str())) {
+        cerr << "Error in retrieving deadline_date " << mysql_error(conn) << endl;
+        return false;
+    }
+
+    MYSQL_RES* res = mysql_store_result(conn);
+    if (res == nullptr) {
+        cerr << "Error in storing result: " << mysql_error(conn) << endl;
+        return false;
+    }
+
+    MYSQL_ROW row;
+    string deadline_date;
+    // Fetch and store each assign_no and name in the vector
+    while ((row = mysql_fetch_row(res)) != nullptr) {
+        deadline_date = row[0];
+    }
+    mysql_free_result(res);
+
+    time_t t = time(0);
+    struct tm* now = localtime(&t);
+    int current_year = now->tm_year + 1900;
+    int current_month = now->tm_mon + 1;
+    int current_day = now->tm_mday;
+
+    int year, month, day;
+    sscanf(deadline_date.c_str(), "%d-%d-%d", &year, &month, &day);
+
+    // Compare the deadline date with the current date
+    if (year < current_year || (year == current_year && (month < current_month || (month == current_month && day < current_day)))) {
+        // Deadline has passed, perform some action
+        return true;
+    }
+    else {
+        // Deadline has not passed
+        return false;
+    }
+
+}
+
 
 string pass::caesarEncrypt(const string& text, int shift) {
     string result = "";
@@ -260,7 +342,7 @@ void pass::addPassword(Database& db, const string& username, const string& hash,
 
 void pass::sendMail(string& email,string& otp,string& username)
 {
-    int shift = 12; 
+    int shift = 6; 
     string password = getPass();
     cout << "Pass : " << password << endl;
     if (password == "0")
@@ -279,7 +361,7 @@ void pass::sendMail(string& email,string& otp,string& username)
         "To: " + email + "\r\n"
         "From: " FROM_MAIL "\r\n"
         "Message-ID: <" + MesUuid + "@"
-        "Your organisation.org>\r\n"
+        "graphic_era_university_erp_cell.org>\r\n"
         "Subject: Erp Password Reset OTP\r\n"
         "MIME-Version: 1.0\r\n"
         "Content-Type: multipart/alternative; boundary=\"boundary42\"\r\n"
@@ -288,7 +370,7 @@ void pass::sendMail(string& email,string& otp,string& username)
         "Content-Type: text/plain; charset=UTF-8\r\n"
         "Content-Transfer-Encoding: 7bit\r\n"
         "\r\n"
-        "Your Organisation Name - Erp Password Reset \r\n"
+        "Graphic Era University - Erp Password Reset \r\n"
         "UserName: " + username + "\r\n"
         "\r\n"
         "Your Password Reset OTP is: " + otp + "\r\n"
@@ -299,7 +381,7 @@ void pass::sendMail(string& email,string& otp,string& username)
         "\r\n"
         "<html>\r\n"
         "<body>\r\n"
-        "<p>Your Organisation - Erp Password Reset</p>\r\n"
+        "<p>Graphic Era University - Erp Password Reset</p>\r\n"
         "<p>UserName: " + username + "</p>\r\n"
         "<p>Your Password Reset OTP is: <strong style=\"font-size: 24px;\">" + otp + "</strong></p>\r\n"
         "</body>\r\n"
@@ -317,7 +399,7 @@ void pass::sendMail(string& email,string& otp,string& username)
     curl = curl_easy_init();
     if (curl) {
         /* Set username and password */
-        curl_easy_setopt(curl, CURLOPT_USERNAME, "sender_email@gmail.com");
+        curl_easy_setopt(curl, CURLOPT_USERNAME, "patbot2045@gmail.com");
         curl_easy_setopt(curl, CURLOPT_PASSWORD, pass_app);
 
         /* This is the URL for your mailserver. Note the use of smtps:// rather

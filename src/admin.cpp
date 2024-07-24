@@ -541,6 +541,29 @@ bool Admin::checkSemesterExists(Database& db, string branchCode, int semester)
     mysql_free_result(res);
     return exists;
 }
+
+bool Admin::checkCourseExists(Database& db, string& CourseId)
+{
+    MYSQL* conn = db.getConnection();
+    // Query to check if subCode exists in courseid_branchcode table
+    string selectQuery = "SELECT COUNT(*) FROM course_main WHERE course_id = '" + CourseId + "'";
+    if (mysql_query(conn, selectQuery.c_str()))
+    {
+        cerr << "Error in checking subject existence: " << mysql_error(conn) << endl;
+        return false;
+    }
+    MYSQL_RES* res = mysql_store_result(conn);
+    if (res == nullptr)
+    {
+        cerr << "Error in storing result: " << mysql_error(conn) << endl;
+        return false;
+    }
+    MYSQL_ROW row = mysql_fetch_row(res);
+    int rowCount = atoi(row[0]);
+    mysql_free_result(res);
+    return rowCount > 0; // Return true if rowCount is greater than 0, indicating that the subject exists
+}
+
 bool Admin::checkBranchExists(Database& db, string& BranchCode)
 {
     MYSQL* conn = db.getConnection();
@@ -1284,6 +1307,13 @@ void Admin::deleteStaff(Database& db, string& username)
         cerr << "Error in deleting from staff: " << mysql_error(conn) << endl;
         return;
     }
+
+    string query = "DELETE FROM holy_salt WHERE username='" + username + "'";
+    if (mysql_query(conn, query.c_str()))
+    {
+        cerr << "Error in deleting password/hash: " << mysql_error(conn) << endl;
+        return;
+    }
     cout << "Staff " << username << " with staff_id " << staffId << " has been successfully deleted." << endl;
 }
 void Admin::deleteUser(Database& db, string& username, string& userType)
@@ -1297,6 +1327,13 @@ void Admin::deleteUser(Database& db, string& username, string& userType)
         cerr << "Error in deleting user: " << mysql_error(conn) << endl;
         return;
     }
+    query = "DELETE FROM holy_salt WHERE username='" + username + "'";
+    if (mysql_query(conn, query.c_str())) 
+    {
+        cerr << "Error in deleting password/hash: " << mysql_error(conn) << endl;
+        return;
+    }
+
     cout << "User " << username << " has been successfully deleted." << endl;
 }
 void Admin::insertAdmin(Database& db, const Admin& admin)
@@ -1670,6 +1707,11 @@ void Admin::addNewUser(Database& db)
         cin.ignore();
         cout << "Enter branch code: ";
         cin >> branch_code;
+        if (!(checkBranchExists(db, branch_code)))
+        {
+            cout << "Invalid Branch Code!!\n";
+            return;
+        }
         branch = getBranchFromBranchId(db, branch_code);
         Staff staff(username, password, realName, dob, branch, salary, address, joiningDate, numOfSubjects, branch_code);
         insertStaff(db, staff);
@@ -1684,12 +1726,27 @@ void Admin::addNewUser(Database& db)
         getline(cin, address);
         cout << "Enter courseId: ";
         cin >> courseId;
+        if (!(checkCourseExists(db, courseId)))
+        {
+            cout << "Invalid CourseId!!\n";
+            return;
+        }
         cout << "Enter branch Code: ";
         cin >> branchCode;
+        if (!(checkBranchExists(db, branchCode)))
+        {
+            cout << "Invalid Branch Code!!\n";
+            return;
+        }
         cout << "Enter section: ";
         cin >> section;
         cout << "Enter semester: ";
         cin >> semester;
+        if (!(checkSemesterExists(db, branchCode, semester)))
+        {
+            cout << "Invalid Semester for this BranchCode: " + branchCode<<"\n";
+            return;
+        }
         cin.ignore();
         course = getCourseFromCourseId(db, courseId);
         branch = getBranchFromBranchId(db, branchCode);
@@ -2097,7 +2154,7 @@ void Admin::viewStaffSalary(Database& db)
 {
     MYSQL* conn = db.getConnection();
     // Query to select staff details
-    string selectQuery = "SELECT staff_id, real_name, branch, salary FROM staff";
+    string selectQuery = "SELECT staff_id,real_name, branch, salary,username FROM staff";
     if (mysql_query(conn, selectQuery.c_str())) {
         cerr << "Error in retrieving staff details: " << mysql_error(conn) << endl;
         return;
@@ -2112,6 +2169,7 @@ void Admin::viewStaffSalary(Database& db)
     // Print header row
     cout << "Staff Salary Details:" << endl;
     cout << left << setw(10) << "Staff ID"
+        << left << setw(20) << "Username"
         << left << setw(30) << "Real Name"
         << left << setw(40) << "Branch"
         << left << setw(10) << "Salary" << endl;
@@ -2123,8 +2181,9 @@ void Admin::viewStaffSalary(Database& db)
         string realName = row[1];
         string branch = row[2];
         double salary = atof(row[3]);
-
+        string username = row[4];
         cout << left << setw(10) << staffId
+            << left << setw(20) << username
             << left << setw(30) << realName
             << left << setw(40) << branch
             << left << setw(10) << salary << endl;

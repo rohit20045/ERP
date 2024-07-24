@@ -43,6 +43,7 @@ private:
     bool checkStudentExists(Database& db, int studentId);
     bool checkSubExists(Database& db, string& subCode);
     bool checkSemesterExists(Database& db, string branchCode, int semester);
+    bool checkCourseExists(Database& db, string& CourseId);
     bool checkBranchExists(Database& db, string& BranchCode);
     void viewAdminData(Database& db);
     void viewAdminOwnData(string& username, Database& db);

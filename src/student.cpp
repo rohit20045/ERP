@@ -4,11 +4,19 @@
 #include<vector>
 #include <iomanip>
 #include<map>
+#include <fstream>
+#include <sstream>
 
 #include "database.h"
 #include "student.h"
 
 using namespace std;
+
+struct AssignInfo {
+    string assign_name;
+    string deadline_date;
+    int assign_no;
+};
 
 // Constructors
 Student::Student() : username(""), password(""), realName(""), address(""), course(""), branch(""), section(""), courseId(""), branchCode(""), semester(0), fees(0.0), cgpa(0.0) {}
@@ -574,7 +582,209 @@ void Student::viewStudentMarks(Database& db, string& username, string marksField
     }
 }
 
+void Student::submitPendingAssignment(Database& db, string& username)
+{
+    MYSQL* conn = db.getConnection();
+    int studentId = getStudentId(db, username);
+    string query = "SELECT semester,section,roll_no FROM student WHERE student_id =" + to_string(studentId);
 
+    if (mysql_query(conn, query.c_str()))
+    {
+        cerr << "Error in retrieving assignment Section " << mysql_error(conn) << endl;
+        return;
+    }
+    MYSQL_RES* res = mysql_store_result(conn);
+    if (res == nullptr) {
+        cerr << "Error in storing result: " << mysql_error(conn) << endl;
+        return;
+    }
+
+    MYSQL_ROW row;
+    string section;
+    int semester, rollNo;
+    // Fetch and store each assign_no and name in the vector
+    if((row = mysql_fetch_row(res)) != nullptr) 
+    {
+        semester = atoi(row[0]);
+        section = row[1];
+        rollNo = atoi(row[2]);
+    }
+    else
+    {
+        return;
+    }
+
+    string que = "SELECT assign_no FROM assignment_ques WHERE semester = " + to_string(semester) + " AND section = '" + section+"'";
+
+    if (mysql_query(conn, que.c_str()))
+    {
+        cerr << "Error in retrieving assignment Section " << mysql_error(conn) << endl;
+        return;
+    }
+    res = mysql_store_result(conn);
+    if (res == nullptr) {
+        cerr << "Error in storing result: " << mysql_error(conn) << endl;
+        return;
+    }
+
+    MYSQL_ROW row1;
+    int assign_no;
+    vector<AssignInfo> assignVect;
+    // Fetch and store each assign_no and name in the vector
+    while ((row1 = mysql_fetch_row(res)) != nullptr) 
+    {
+        assign_no = atoi(row1[0]);
+
+        string query1 = "SELECT name,deadline_date FROM assignment_ques WHERE assign_no = " + to_string(assign_no);
+
+        if (mysql_query(conn, query1.c_str()))
+        {
+            cerr << "Error in retrieving assignment Section " << mysql_error(conn) << endl;
+            return;
+        }
+        MYSQL_RES* res2 = mysql_store_result(conn);
+        if (res2 == nullptr) {
+            cerr << "Error in storing result: " << mysql_error(conn) << endl;
+            return;
+        }
+
+        MYSQL_ROW row2;
+        string assign_name, deadline_date;
+
+        // Fetch and store each assign_no and name in the vector
+        if((row2 = mysql_fetch_row(res2)) != nullptr) 
+        {
+            assign_name = row2[0];
+            deadline_date = row2[1];
+
+            if (!(passFobj.checkDeadlinePass(db, assign_no)))
+            {
+                AssignInfo as = { assign_name, deadline_date, assign_no };
+                assignVect.push_back(as);
+            }
+
+        }
+        else {
+            return;
+        }
+    }
+    if (assignVect.size()==0)
+    {
+        cout << "No Pending Assignment!!\n";
+        return;
+    }
+    else
+    {
+        string status = "";
+        int i = 1;
+        while(i<=assignVect.size())
+        {
+            if ( (passFobj.assignmentAlreadySubmitted(db, assignVect[i - 1].assign_no, studentId)) )
+            {
+                status = "Submitted";
+            }
+            else
+            {
+                status = "Not Submitted";
+            }
+            cout << i  << " . " << assignVect[i-1].assign_name << " , Deadline-Date: "<<assignVect[i-1].deadline_date<<" , Status : "<<status<<endl;
+            i += 1;
+        }
+        cout << i << " . Exit\n";
+        cout << "Enter Choice : ";
+        int ch;
+        cin >> ch;
+
+        // Check if the input operation failed
+        if (cin.fail())
+        {
+            cin.clear(); // Clear the error state
+            cin.ignore(50, '\n');
+            cout << "Invalid input. Please enter a number." << endl << endl;
+            return; // Skip the switch statement and prompt again
+        }
+        if (ch == i)
+        {
+            cout << "Exiting\n\n";
+            return;
+        }
+        if (ch <= 0 && ch > i)
+        {
+            cout << "Invalid Choice!!\n";
+            return;
+        }
+        AssignInfo as1 = assignVect[ch-1];
+        string file_path;
+        cout << "Enter the path of file with filename eg: (D:\assignment\assignment-1.pdf/doc) : \n";
+        cin >> file_path;
+
+        string file_type;
+        if (file_path.substr(file_path.find_last_of(".") + 1) == "pdf") {
+            file_type = "pdf";
+        }
+        else if ((file_path.substr(file_path.find_last_of(".") + 1) == "doc") ) {
+            file_type = "doc";
+        }
+        else if ((file_path.substr(file_path.find_last_of(".") + 1) == "docx"))
+        {
+            file_type = "docx";
+        }
+        else 
+        {
+            cerr << "Invalid file type. Only PDF and DOC are allowed." << endl;
+            return;
+        }
+
+        // Read the file content
+        ifstream file(file_path, ios::binary);
+        if (!file.is_open()) {
+            cerr << "Unable to open file: " << file_path << endl;
+            return;
+        }
+
+        stringstream buffer;
+        buffer << file.rdbuf();
+        string file_content = buffer.str();
+        file.close();
+
+        // Escape file content to be safely used in SQL query
+        char* escaped_file_content = new char[file_content.length() * 2 + 1];
+        mysql_real_escape_string(conn, escaped_file_content, file_content.c_str(), file_content.length());
+
+        bool alreadysubmit = false;
+        string insertQuery = "";
+        if ((passFobj.assignmentAlreadySubmitted(db, as1.assign_no, studentId)))
+        {
+            insertQuery = "UPDATE assignment_files SET file = '" + string(escaped_file_content) + "' WHERE assign_no = " +
+                to_string(as1.assign_no) + " AND student_id = " + to_string(studentId);
+            alreadysubmit = true;
+        }
+        else
+        {
+            insertQuery = "INSERT INTO assignment_files (student_id, roll_no, assign_no, deadline_date, file, type) VALUES ( " + to_string(studentId)
+                + " , " + to_string(rollNo) + ", " + to_string(as1.assign_no) + ", '" + as1.deadline_date + "' , '" + string(escaped_file_content) + "' , '" + file_type + "' )";
+            
+        }
+
+        // Execute the query
+        if (mysql_query(conn, insertQuery.c_str())) {
+            cerr << "Error in submitting assignment: " << mysql_error(conn) << endl;
+        }
+        else 
+        {
+            if (alreadysubmit)
+            {
+                cout << "Assignment Updated Successfully. " << endl;
+            }
+            else
+            {
+                cout << "Assignment Submitted Successfully." << endl;
+            }
+        }
+        delete[] escaped_file_content;
+    }
+
+}
 void Student::studentMenu(Database& db, string& username)
 {
     int choice,ch1,ch2;
@@ -586,8 +796,9 @@ void Student::studentMenu(Database& db, string& username)
         cout << "2. View Teaching Faculty Data" << endl;
         cout << "3. View Attendance" << endl;
         cout << "4. View Marks" << endl;
-        cout << "5. Change Password" << endl;
-        cout << "6. Exit" << endl;
+        cout << "5. Submit Pending Assignment" << endl;
+        cout << "6. Change Password" << endl;
+        cout << "7. Exit" << endl;
         cout << "Enter your choice: ";
         cin >> choice;
         // Check if the input operation failed
@@ -646,6 +857,9 @@ void Student::studentMenu(Database& db, string& username)
             } while (ch1 != 3);
             break;
         case 5:
+            submitPendingAssignment(db, username);
+            break;
+        case 6:
             do {
                 cout << "1. By old Password\n";
                 cout << "2. By Email OTP\n";
@@ -678,12 +892,14 @@ void Student::studentMenu(Database& db, string& username)
             } while (ch2 != 3);
             break;
 
-        case 6:
+        case 7:
             cout << "Exiting Student Menu..." << endl;
             break;
         default:
             cout << "Invalid choice. Please enter again." << endl;
             break;
         }
-    } while (choice != 6);
+    } while (choice != 7);
 }
+
+
